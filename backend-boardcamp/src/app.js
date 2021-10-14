@@ -43,4 +43,11 @@ app.post("/categories", (req, res) => {
     .catch(() => res.sendStatus(500));
 });
 
+// Games
+app.get("/games", (req, res) => {
+  db.query("SELECT * FROM games;")
+    .then((games) => res.send(games.rows))
+    .catch(() => res.sendStatus(500));
+});
+
 app.listen(4000);
