@@ -15,4 +15,11 @@ const app = express();
 
 app.use(express.json());
 
+// Categories
+app.get("/categories", (req, res) => {
+  db.query("SELECT * FROM categories;")
+    .then((categories) => res.send(categories.rows))
+    .catch(() => res.sendStatus(500));
+});
+
 app.listen(4000);
