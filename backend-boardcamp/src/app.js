@@ -22,4 +22,25 @@ app.get("/categories", (req, res) => {
     .catch(() => res.sendStatus(500));
 });
 
+app.post("/categories", (req, res) => {
+  const name = req.body.name;
+
+  if (name === "") {
+    res.sendStatus(400);
+    return;
+  }
+
+  db.query("SELECT * FROM categories;")
+    .then((result) => {
+      if (result.rows.find((c) => c.name === name)) {
+        res.sendStatus(409);
+      } else {
+        db.query("INSERT INTO categories (name) VALUES ($1)", [name])
+          .then(() => res.sendStatus(201))
+          .catch(() => res.sendStatus(500));
+      }
+    })
+    .catch(() => res.sendStatus(500));
+});
+
 app.listen(4000);
