@@ -44,10 +44,13 @@ app.post("/categories", (req, res) => {
 });
 
 // Games
-app.get("/games", (req, res) => {
-  db.query("SELECT * FROM games;")
-    .then((games) => res.send(games.rows))
-    .catch(() => res.sendStatus(500));
+app.get("/games", async (req, res) => {
+  try {
+    const games = await db.query("SELECT * FROM games;");
+    res.send(games.rows);
+  } catch {
+    res.sendStatus(500);
+  }
 });
 
 app.listen(4000);
