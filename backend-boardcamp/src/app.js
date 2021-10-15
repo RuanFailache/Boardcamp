@@ -16,13 +16,16 @@ const app = express();
 app.use(express.json());
 
 // Categories
-app.get("/categories", (req, res) => {
-  db.query("SELECT * FROM categories;")
-    .then((categories) => res.send(categories.rows))
-    .catch(() => res.sendStatus(500));
+app.get("/categories", async (req, res) => {
+  try {
+    const categories = await db.query("SELECT * FROM categories;");
+    res.send(categories.rows);
+  } catch {
+    res.sendStatus(500);
+  }
 });
 
-app.post("/categories", (req, res) => {
+app.post("/categories", async (req, res) => {
   const name = req.body.name;
 
   if (name === "") {
@@ -30,17 +33,18 @@ app.post("/categories", (req, res) => {
     return;
   }
 
-  db.query("SELECT * FROM categories;")
-    .then((result) => {
-      if (result.rows.find((c) => c.name === name)) {
-        res.sendStatus(409);
-      } else {
-        db.query("INSERT INTO categories (name) VALUES ($1)", [name])
-          .then(() => res.sendStatus(201))
-          .catch(() => res.sendStatus(500));
-      }
-    })
-    .catch(() => res.sendStatus(500));
+  try {
+    const categories = await db.query("SELECT * FROM categories;");
+
+    if (categories.rows.find((c) => c.name === name)) {
+      res.sendStatus(409);
+    } else {
+      await db.query("INSERT INTO categories (name) VALUES ($1)", [name]);
+      res.sendStatus(201);
+    }
+  } catch {
+    res.sendStatus(500);
+  }
 });
 
 // Games
