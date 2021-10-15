@@ -56,14 +56,21 @@ app.get("/games", async (req, res) => {
 
   try {
     const games = await db.query(
-      "SELECT g.id, g.name, g.image, g.stockTotal,\
-              g.categoryId, g.pricePerDay, c.name AS categoryName\
-        FROM games g, categories c\
-        WHERE g.categoryId = c.id AND g.name LIKE '$1%';\
-      ", [name]
+      `SELECT
+        games.id AS id,
+        games.name AS name,
+        games."stockTotal" AS "stockTotal",
+        games."categoryId" AS "categoryId",
+        games."pricePerDay" AS "pricePerDay",
+        categories.name AS "categoryName"
+      FROM games
+        JOIN categories
+          ON games."categoryId" = categories.id
+      WHERE games.name ILIKE $1;`, [name + '%']
     );
     res.send(games.rows);
-  } catch {
+  } catch (err) {
+    console.log(err)
     res.sendStatus(500);
   }
 });
@@ -79,9 +86,9 @@ app.post("/games", async (req, res) => {
 
   try {
     await db.query(
-      "INSERT INTO games (name, image, stockTotal, categoryId, pricePerDay)\
+      'INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay")\
         VALUES ($1, $2, $3, $4, $5);\
-      ", [name, image, stockTotal, categoryId, pricePerDay]
+      ', [name, image, stockTotal, categoryId, pricePerDay]
     )
     res.sendStatus(201);
   } catch {
