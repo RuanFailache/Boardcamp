@@ -66,7 +66,7 @@ app.get("/games", async (req, res) => {
       FROM games
         JOIN categories
           ON games."categoryId" = categories.id
-      WHERE games.name ILIKE $1;`, [name + '%']
+      WHERE games.name ILIKE $1;`, [name ? name + '%' : "%"]
     );
     res.send(games.rows);
   } catch (err) {
@@ -83,6 +83,20 @@ app.post("/games", async (req, res) => {
     categoryId,
     pricePerDay
   } = req.body;
+
+  const categories = await db.query("SELECT * FROM categories;");
+  const categoriesIds = categories.rows.map((category) => category.id);
+  
+  const games = await db.query("SELECT * FROM games;");
+  const gamesNames = games.rows.map((game) => game.name);
+
+  if (name === "" || stockTotal <= 0 || pricePerDay <= 0 || !categoriesIds.includes(categoryId)) {
+    res.sendStatus(400);
+    return;
+  } else if (gamesNames.includes(name)) {
+    res.sendStatus(409);
+    return;
+  }
 
   try {
     await db.query(
