@@ -39,7 +39,10 @@ app.post("/categories", async (req, res) => {
     if (categories.rows.find((c) => c.name === name)) {
       res.sendStatus(409);
     } else {
-      await db.query("INSERT INTO categories (name) VALUES ($1)", [name]);
+      await db.query(
+        "INSERT INTO categories (name) VALUES ($1)",
+        [name]
+      );
       res.sendStatus(201);
     }
   } catch {
@@ -49,9 +52,38 @@ app.post("/categories", async (req, res) => {
 
 // Games
 app.get("/games", async (req, res) => {
+  const name = req.query.name;
+
   try {
-    const games = await db.query("SELECT * FROM games;");
+    const games = await db.query(
+      "SELECT g.id, g.name, g.image, g.stockTotal,\
+              g.categoryId, g.pricePerDay, c.name AS categoryName\
+        FROM games g, categories c\
+        WHERE g.categoryId = c.id AND g.name LIKE '$1%';\
+      ", [name]
+    );
     res.send(games.rows);
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
+app.post("/games", async (req, res) => {
+  const {
+    name,
+    image,
+    stockTotal,
+    categoryId,
+    pricePerDay
+  } = req.body;
+
+  try {
+    await db.query(
+      "INSERT INTO games (name, image, stockTotal, categoryId, pricePerDay)\
+        VALUES ($1, $2, $3, $4, $5);\
+      ", [name, image, stockTotal, categoryId, pricePerDay]
+    )
+    res.sendStatus(201);
   } catch {
     res.sendStatus(500);
   }
