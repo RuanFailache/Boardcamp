@@ -35,8 +35,9 @@ app.post("/categories", async (req, res) => {
 
   try {
     const categories = await db.query("SELECT * FROM categories;");
+    const categoriesNames = categories.rows.map((category) => category.name)
 
-    if (categories.rows.find((c) => c.name === name)) {
+    if (categoriesNames.includes(name)) {
       res.sendStatus(409);
     } else {
       await db.query(
@@ -57,16 +58,12 @@ app.get("/games", async (req, res) => {
   try {
     const games = await db.query(
       `SELECT
-        games.id AS id,
-        games.name AS name,
-        games."stockTotal" AS "stockTotal",
-        games."categoryId" AS "categoryId",
-        games."pricePerDay" AS "pricePerDay",
+        games.*,
         categories.name AS "categoryName"
       FROM games
         JOIN categories
           ON games."categoryId" = categories.id
-      WHERE games.name ILIKE $1;`, [name ? name + '%' : "%"]
+      WHERE games.name ILIKE $1;`, [name ? name + "%" : "%"]
     );
     res.send(games.rows);
   } catch (err) {
@@ -100,14 +97,35 @@ app.post("/games", async (req, res) => {
 
   try {
     await db.query(
-      'INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay")\
-        VALUES ($1, $2, $3, $4, $5);\
-      ', [name, image, stockTotal, categoryId, pricePerDay]
+      `INSERT INTO games (
+        name,
+        image, 
+        "stockTotal", 
+        "categoryId", 
+        "pricePerDay"
+      ) VALUES ($1, $2, $3, $4, $5);`, 
+      [name, image, stockTotal, categoryId, pricePerDay]
     )
     res.sendStatus(201);
   } catch {
     res.sendStatus(500);
   }
 });
+
+// Customers
+app.get("/customers", async (req, res) => {
+  const cpf = req.query.cpf;
+
+  try {
+    const customers = await db.query(`
+      SELECT * FROM customers
+        WHERE cpf ILIKE $1;
+    `, [cpf ? cpf + "%" : "%"]);
+
+    res.send(customers.rows)
+  } catch {
+    res.sendStatus(500);
+  }
+})
 
 app.listen(4000);
