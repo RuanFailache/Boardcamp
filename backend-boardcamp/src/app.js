@@ -132,15 +132,22 @@ app.get("/customers/:id", async (req, res) => {
   const id = req.params.id;
 
   try {
-    const customer = await db.query(`
-      SELECT * FROM customers WHERE id = $1;
+    const customers = await db.query(`
+      SELECT * FROM customers;
     `);
 
-    if (customer.rows === []) {
+    const customersIds = customers.rows.map((c) => c.id);
+
+    if (!customersIds.includes(Number(id))) {
       res.sendStatus(404);
-    } else {
-      res.send(customer.rows[0]);
+      return;
     }
+
+    const customer = await db.query(`
+      SELECT * FROM customers WHERE id = $1;
+    `, [id]);
+
+    res.send(customer.rows[0]);
   } catch {
     res.sendStatus(500);
   }
@@ -171,7 +178,7 @@ app.post("/customers", async (req, res) => {
   try {
     const customers = await db.query(`
       SELECT * FROM customers;
-    `)
+    `);
     
     const cpfList = customers.rows.map((c) => c.cpf);
 
