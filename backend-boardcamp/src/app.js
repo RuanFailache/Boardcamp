@@ -144,6 +144,54 @@ app.get("/customers/:id", async (req, res) => {
   } catch {
     res.sendStatus(500);
   }
+});
+
+app.post("/customers", async (req, res) => {
+  const {
+    name,
+    phone,
+    cpf,
+    birthday
+  } = req.body;
+
+  const cpfRegEx = new RegExp(/^[0-9]{11}$/);
+  const phoneRegEx = new RegExp(/^[0-9]{10}([0-9])?$/);
+  const birthdayRegEx = new RegExp(/^(1[9][0-9]{2}|2[0]([01][0-9]|2[01]))-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/);
+
+  if (
+    name.length < 3 || 
+    !cpfRegEx.test(cpf) || 
+    !phoneRegEx.test(phone) || 
+    !birthdayRegEx.test(birthday)
+  ) {
+    res.sendStatus(400);
+    return;
+  }
+
+  try {
+    const customers = await db.query(`
+      SELECT * FROM customers;
+    `)
+    
+    const cpfList = customers.rows.map((c) => c.cpf);
+
+    if (cpfList.includes(cpf)) {
+      res.sendStatus(409);
+      return;
+    }
+
+    await db.query(`
+      INSERT INTO customers 
+        (name, phone, cpf, birthday) 
+      VALUES 
+        ($1, $2, $3, $4);`,
+      [name, phone, cpf, birthday]);
+
+    res.sendStatus(201);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
 })
 
 app.listen(4000);
