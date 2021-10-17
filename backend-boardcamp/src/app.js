@@ -259,10 +259,9 @@ app.get("/rentals", async (req, res) => {
         "SELECT * FROM customers WHERE id = $1;",
         [rental.customerId]
       );
-      const game = await db.query(
-        "SELECT * FROM games WHERE id = $1;", 
-        [rental.gameId]
-      );
+      const game = await db.query("SELECT * FROM games WHERE id = $1;", [
+        rental.gameId,
+      ]);
       const category = await db.query(
         "SELECT * FROM categories WHERE id = $1",
         [game.rows[0].categoryId]
@@ -287,11 +286,11 @@ app.get("/rentals", async (req, res) => {
     }));
 
     if (qCostId) {
-      rentals = rentals.filter(rental => rental.customerId === qCostId);
+      rentals = rentals.filter((rental) => rental.customerId === qCostId);
     }
 
     if (qGameId) {
-      rentals = rentals.filter(rental => rental.gameId === qGameId);
+      rentals = rentals.filter((rental) => rental.gameId === qGameId);
     }
 
     res.send(rentals);
@@ -350,6 +349,40 @@ app.post("/rentals", async (req, res) => {
 
     res.sendStatus(201);
   } catch {
+    res.sendStatus(500);
+  }
+});
+
+app.post("/rentals/:id/return", async (req, res) => {
+  const id = Number(req.params.id);
+
+  try {
+    const rentals = await db.query(`SELECT * FROM rentals;`);
+    
+    const rental = rentals.rows.find((r) => r.id === id);
+
+    const now = dayjs();
+    const returnDate = now.format("YYYY-MM-DD");;
+
+    const oneDayInSeconds = 24 * 60 * 60 * 1000;
+    const rentDate = rental.rentDate;
+    const daysRented = rental.daysRented;
+    const pricePerDay = rental.originalPrice / daysRented;
+    const delayDays = Math.floor(now.diff(rentDate) / oneDayInSeconds) - daysRented;
+    const delayFee = delayDays > 0 ? pricePerDay * delayDays: 0;
+
+    await db.query(
+      `
+      UPDATE rentals SET      
+        "returnDate" = $1,
+        "delayFee" = $2
+      WHERE id = $3;
+      `, [returnDate, delayFee, id]
+    )
+
+    res.sendStatus(200)
+  } catch (err) {
+    console.log(err)
     res.sendStatus(500);
   }
 });
