@@ -35,14 +35,12 @@ app.post("/categories", async (req, res) => {
 
   try {
     const categories = await db.query("SELECT * FROM categories;");
+    const categoriesNames = categories.rows.map((category) => category.name);
 
-    if (categories.rows.find((c) => c.name === name)) {
+    if (categoriesNames.includes(name)) {
       res.sendStatus(409);
     } else {
-      await db.query(
-        "INSERT INTO categories (name) VALUES ($1)",
-        [name]
-      );
+      await db.query("INSERT INTO categories (name) VALUES ($1)", [name]);
       res.sendStatus(201);
     }
   } catch {
@@ -57,40 +55,36 @@ app.get("/games", async (req, res) => {
   try {
     const games = await db.query(
       `SELECT
-        games.id AS id,
-        games.name AS name,
-        games."stockTotal" AS "stockTotal",
-        games."categoryId" AS "categoryId",
-        games."pricePerDay" AS "pricePerDay",
+        games.*,
         categories.name AS "categoryName"
       FROM games
         JOIN categories
           ON games."categoryId" = categories.id
-      WHERE games.name ILIKE $1;`, [name ? name + '%' : "%"]
+      WHERE games.name ILIKE $1;`,
+      [name ? name + "%" : "%"]
     );
     res.send(games.rows);
   } catch (err) {
-    console.log(err)
+    console.log(err);
     res.sendStatus(500);
   }
 });
 
 app.post("/games", async (req, res) => {
-  const {
-    name,
-    image,
-    stockTotal,
-    categoryId,
-    pricePerDay
-  } = req.body;
+  const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
 
   const categories = await db.query("SELECT * FROM categories;");
   const categoriesIds = categories.rows.map((category) => category.id);
-  
+
   const games = await db.query("SELECT * FROM games;");
   const gamesNames = games.rows.map((game) => game.name);
 
-  if (name === "" || stockTotal <= 0 || pricePerDay <= 0 || !categoriesIds.includes(categoryId)) {
+  if (
+    name === "" ||
+    stockTotal <= 0 ||
+    pricePerDay <= 0 ||
+    !categoriesIds.includes(categoryId)
+  ) {
     res.sendStatus(400);
     return;
   } else if (gamesNames.includes(name)) {
@@ -100,11 +94,146 @@ app.post("/games", async (req, res) => {
 
   try {
     await db.query(
-      'INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay")\
-        VALUES ($1, $2, $3, $4, $5);\
-      ', [name, image, stockTotal, categoryId, pricePerDay]
-    )
+      `INSERT INTO games (
+        name,
+        image, 
+        "stockTotal", 
+        "categoryId", 
+        "pricePerDay"
+      ) VALUES ($1, $2, $3, $4, $5);`,
+      [name, image, stockTotal, categoryId, pricePerDay]
+    );
     res.sendStatus(201);
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
+// Customers
+const checkCustomersData = (data) => {
+  const cpfRegEx = new RegExp(/^[0-9]{11}$/);
+  const phoneRegEx = new RegExp(/^[0-9]{10}([0-9])?$/);
+  const birthdayRegEx = new RegExp(
+    /^(1[9][0-9]{2}|2[0]([01][0-9]|2[01]))-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/
+  );
+
+  return (
+    data.name.length < 3 ||
+    !cpfRegEx.test(data.cpf) ||
+    !phoneRegEx.test(data.phone) ||
+    !birthdayRegEx.test(data.birthday)
+  );
+};
+
+app.get("/customers", async (req, res) => {
+  const cpf = req.query.cpf;
+
+  try {
+    const customers = await db.query(
+      `
+      SELECT * FROM customers
+        WHERE cpf ILIKE $1;
+    `,
+      [cpf ? cpf + "%" : "%"]
+    );
+
+    res.send(customers.rows);
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
+app.get("/customers/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  try {
+    const customers = await db.query(`SELECT * FROM customers;`);
+    const customersIds = customers.rows.map((c) => c.id);
+
+    if (!customersIds.includes(id)) {
+      res.sendStatus(404);
+      return;
+    }
+
+    const customer = await db.query(
+      `
+      SELECT * FROM customers WHERE id = $1;
+    `,
+      [id]
+    );
+
+    res.send(customer.rows[0]);
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
+app.post("/customers", async (req, res) => {
+  const body = req.body;
+
+  if (checkCustomersData(body)) {
+    res.sendStatus(400);
+    return;
+  }
+
+  try {
+    const customers = await db.query(`SELECT * FROM customers;`);
+    const customersCpfs = customers.rows.map((c) => c.cpf);
+
+    if (customersCpfs.includes(body.cpf)) {
+      res.sendStatus(409);
+      return;
+    }
+
+    await db.query(
+      `
+      INSERT INTO customers 
+        (name, phone, cpf, birthday) 
+      VALUES 
+        ($1, $2, $3, $4);`,
+      [body.name, body.phone, body.cpf, body.birthday]
+    );
+
+    res.sendStatus(201);
+  } catch (err) {
+    res.sendStatus(500);
+  }
+});
+
+app.put("/customers/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const body = req.body;
+
+  try {
+    const customers = await db.query(`SELECT * FROM customers;`);
+    const customersIds = customers.rows.map((c) => c.id);
+    const customersCpfs = customers.rows.map((c) => c.cpf);
+
+    if (customersCpfs.includes(body.cpf)) {
+      res.sendStatus(409);
+      return;
+    }
+
+    if (!customersIds.includes(id)) {
+      res.sendStatus(404);
+      return;
+    }
+
+    if (checkCustomersData(body)) {
+      res.sendStatus(400);
+      return;
+    }
+
+    await db.query(`
+      UPDATE customers SET
+        name = $1,
+        phone = $2,
+        cpf = $3,
+        birthday = $4
+      WHERE id = $5;
+    `, [body.name, body.phone, body.cpf, body.birthday, id]);
+
+    res.sendStatus(200)
   } catch {
     res.sendStatus(500);
   }
