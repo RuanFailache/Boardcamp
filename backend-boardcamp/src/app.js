@@ -362,14 +362,14 @@ app.post("/rentals/:id/return", async (req, res) => {
     const rental = rentals.rows.find((r) => r.id === id);
 
     const now = dayjs();
-    const returnDate = now.format("YYYY-MM-DD");;
+    const returnDate = now.format("YYYY-MM-DD");
 
     const oneDayInSeconds = 24 * 60 * 60 * 1000;
     const rentDate = rental.rentDate;
     const daysRented = rental.daysRented;
     const pricePerDay = rental.originalPrice / daysRented;
     const delayDays = Math.floor(now.diff(rentDate) / oneDayInSeconds) - daysRented;
-    const delayFee = delayDays > 0 ? pricePerDay * delayDays: 0;
+    const delayFee = delayDays > 0 ? pricePerDay * delayDays: null;
 
     await db.query(
       `
