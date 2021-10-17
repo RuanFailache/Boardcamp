@@ -387,4 +387,26 @@ app.post("/rentals/:id/return", async (req, res) => {
   }
 });
 
+app.delete("/rentals/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  try {
+    const rentals = await db.query("SELECT * FROM rentals;");
+    const rentedGame = rentals.rows.find((rental) => rental.id === id);
+
+    if (!rentedGame) {
+      res.sendStatus(404);
+      return;
+    } else if (rentedGame.returnDate === null) {
+      res.sendStatus(400);
+      return;
+    }
+
+    await db.query("DELETE FROM rentals WHERE id = $1;", [id]);
+    res.sendStatus(200);
+  } catch {
+    res.sendStatus(500);
+  }
+})
+
 app.listen(4000);
