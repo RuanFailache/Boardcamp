@@ -1,4 +1,5 @@
 import express from "express";
+import cors from 'cors';
 import pg from "pg";
 import dayjs from "dayjs";
 
@@ -14,6 +15,7 @@ const db = new pg.Pool(connectionData);
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 // Categories
